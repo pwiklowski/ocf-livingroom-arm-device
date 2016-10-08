@@ -7,6 +7,10 @@
 #include "OICServer.h"
 #include <arpa/inet.h>
 #include <net/if.h>
+#include "QSerialPort"
+#include "QSerialPortInfo"
+
+
 
 class Application : public QCoreApplication
 {
@@ -31,7 +35,13 @@ private:
     void send_packet(sockaddr_in destination, COAPPacket* packet);
     void send_packet(COAPPacket* packet);
 
-   int m_socketFd;
+    void setOutput(quint8 out, quint16 val);
+
+
+
+
+    int m_socketFd;
+    QSerialPort* m_serial;
     OICServer* server;
     pthread_t m_thread;
     pthread_t m_discoveryThread;

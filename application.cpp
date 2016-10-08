@@ -4,47 +4,109 @@
 #include "QVariant"
 #include <poll.h>
 
+
+extern uint64_t get_current_ms();
+
 Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 {
-    server = new OICServer("OicSampleDevice", "0685B960-0000-46F7-BEC0-9E6CBD61ADC2", [&](COAPPacket* packet){
+    server = new OICServer("Orange PI Kuchnia", "0000B960-0000-46F7-BEC0-9E6CBD61ADC2", [&](COAPPacket* packet){
         this->send_packet(packet);
     });
 
-    cbor floorInitial(CBOR_TYPE_MAP);
-    floorInitial.append("rt", "oic.r.light.dimming");
-    floorInitial.append("dimmingSetting", 5);
-    floorInitial.append("range", "0,255");
+    cbor* floorInitial = new cbor(CBOR_TYPE_MAP);
+    floorInitial->append("rt", "oic.r.light.dimming");
+    floorInitial->append("dimmingSetting", 5);
+    floorInitial->append("range", "0,255");
 
-    cbor tableInitial(CBOR_TYPE_MAP);
-    tableInitial.append("rt", "oic.r.light.dimming");
-    tableInitial.append("dimmingSetting", 5);
-    tableInitial.append("range", "0,255");
+    cbor* tableInitial = new cbor(CBOR_TYPE_MAP);
+    tableInitial->append("rt", "oic.r.light.dimming");
+    tableInitial->append("dimmingSetting", 5);
+    tableInitial->append("range", "0,255");
 
-    OICResource* floor = new OICResource("/lampa/floor", "oic.r.light.dimming","oic.if.rw", [](cbor data){
+    cbor* kuchniaInitial = new cbor(CBOR_TYPE_MAP);
+    kuchniaInitial->append("rt", "oic.r.light.dimming");
+    kuchniaInitial->append("dimmingSetting", 5);
+    kuchniaInitial->append("range", "0,255");
+
+    OICResource* floor = new OICResource("/lampa/floor", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        floorInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         int val = data.getMapValue("dimmingSetting").toInt();
         qDebug() << "Front updated" << val;
+        setOutput(1, val);
     }, floorInitial);
 
 
-    OICResource* table = new OICResource("/lampa/table", "oic.r.light.dimming","oic.if.rw", [](cbor data){
+    OICResource* table = new OICResource("/lampa/table", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        tableInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         int val = data.getMapValue("dimmingSetting").toInt();
         qDebug() << "Table updated" << val;
-
+        setOutput(2, val);
     }, tableInitial);
+
+    OICResource* kuchnia = new OICResource("/lampa/kuchnia", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        kuchniaInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+        int val = data.getMapValue("dimmingSetting").toInt();
+        qDebug() << "Kucyhnia updated" << val;
+        setOutput(3, val);
+    }, kuchniaInitial);
 
     server->addResource(floor);
     server->addResource(table);
+    server->addResource(kuchnia);
 
     server->start();
 
     m_running = true;
     pthread_create(&m_thread, NULL, &Application::run, this);
     pthread_create(&m_discoveryThread, NULL, &Application::runDiscovery, this);
+
+
+    QString port;
+
+    if (port.isEmpty())
+    {
+        QList<QSerialPortInfo> infos = QSerialPortInfo::availablePorts();
+        QSerialPortInfo port;
+        foreach (QSerialPortInfo info, infos)
+        {
+            qDebug() << info.portName();
+            if (info.portName().contains("USB"))
+            {
+                port = info;
+                break;
+            }
+        }
+
+        m_serial = new QSerialPort(port, this);
+    }
+    else
+    {
+        m_serial = new QSerialPort(port, this);
+    }
+
+    bool res = m_serial->open(QIODevice::ReadWrite);
+    qDebug() << "Serial port opened" << res;
+    m_serial->setBaudRate(QSerialPort::Baud115200);
+    m_serial->setDataBits(QSerialPort::Data8);
+    m_serial->setParity(QSerialPort::NoParity);
+    m_serial->setStopBits(QSerialPort::OneStop);
+    m_serial->setFlowControl(QSerialPort::NoFlowControl);
 }
+
 bool Application::isRunning(){
     return m_running;
 }
 
+
+void Application::setOutput(quint8 out, quint16 value){
+    QString data("%1 %2\n");
+    if (m_serial->isOpen()){
+        m_serial->write(data.arg(out).arg(value).toLatin1());
+        m_serial->waitForBytesWritten(1000);
+    }
+
+
+}
 
 Application::~Application(){
     m_running = false;
@@ -68,8 +130,6 @@ String Application::convertAddress(sockaddr_in a){
 void* Application::run(void* param){
     Application* a = (Application*) param;
     OICServer* oic_server = a->getServer();
-    COAPServer* coap_server = oic_server->getCoapServer();
-
 
     const int on = 1;
     int fd = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP);
@@ -93,12 +153,28 @@ void* Application::run(void* param){
         qDebug("Unable to bind");
         return 0;
     }
+    struct pollfd pfd;
+    int res;
 
-    while(a->isRunning()){
-        int rc= recvfrom(fd,buffer,sizeof(buffer),0,(struct sockaddr *)&client,&l);
-        COAPPacket* p = COAPPacket::parse(buffer, rc, a->convertAddress(client).c_str());
-        coap_server->handleMessage(p);
-        delete p;
+    size_t rc;
+    int64_t lastTick = get_current_ms();
+
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    while(1){
+        rc = poll(&pfd, 1, 20); // 1000 ms timeout
+        if (rc >0){
+            rc = recvfrom(fd,buffer,sizeof(buffer),0,(struct sockaddr *)&client,&l);
+            COAPPacket* p = COAPPacket::parse(buffer, rc, a->convertAddress(client).c_str());
+
+            oic_server->handleMessage(p);
+            delete p;
+        }
+        oic_server->sendQueuedPackets();
+        if ((get_current_ms() - lastTick) > 1000){
+            lastTick = get_current_ms();
+            oic_server->checkPackets();
+        }
     }
 
     return 0;
@@ -108,7 +184,6 @@ void* Application::run(void* param){
 void* Application::runDiscovery(void* param){
     Application* a = (Application*) param;
     OICServer* oic_server = a->getServer();
-    COAPServer* coap_server = oic_server->getCoapServer();
 
     const int on = 1;
 
@@ -144,16 +219,17 @@ void* Application::runDiscovery(void* param){
     pfd.fd = fd;
     pfd.events = POLLIN;
     size_t rc;
+    int64_t lastTick = get_current_ms();
+
     while(a->isRunning()){
         rc = poll(&pfd, 1, 200); // 1000 ms timeout
         if(rc > 0)
         {
             rc= recvfrom(fd,buffer,sizeof(buffer),0,(struct sockaddr *)&client,&l);
             COAPPacket* p = COAPPacket::parse(buffer, rc, a->convertAddress(client));
-            coap_server->handleMessage(p);
+            oic_server->handleMessage(p);
             delete p;
         }
-        coap_server->tick();
     }
     return 0;
 }
@@ -196,7 +272,7 @@ void Application::notifyObservers(QString name, QVariant v){
 
         List<uint8_t> data;
         value.dump(&data);
-        server->getCoapServer()->notify(name.toLatin1().data(), &data);
+        server->notify(name.toLatin1().data(), &data);
     }
 }
 
