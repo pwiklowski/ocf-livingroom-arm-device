@@ -339,12 +339,9 @@ void Application::notifyObservers(QString name, QVariant v){
         cbor value(CBOR_TYPE_MAP);
 
         if (name.contains("ambient")){
-            value.append("rt", "oic.r.colour.rgb");
             value.append("dimmingSetting", v.toString().toLatin1().data());
         }else{
-            value.append("rt", "oic.r.light.dimming");
             value.append("dimmingSetting", v.toInt());
-            value.append("range", "0,255");
         }
 
         List<uint8_t> data;
