@@ -7,8 +7,83 @@
 
 extern uint64_t get_current_ms();
 
+#define CONFIG_KUCHNIA_
+#define CONFIG_SALON
+
+
 Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 {
+#ifdef CONFIG_SALON
+    server = new OICServer("Orange PI Salon", "00000000-0000-0000-0001-000000000001", [&](COAPPacket* packet){
+        this->send_packet(packet);
+    });
+
+    cbor* ambientInitial = new cbor(CBOR_TYPE_MAP);
+    ambientInitial->append("rt", "oic.r.colour.rgb");
+    ambientInitial->append("dimmingSetting", "1,2,3");
+
+
+    cbor* frontInitial = new cbor(CBOR_TYPE_MAP);
+    frontInitial->append("rt", "oic.r.light.dimming");
+    frontInitial->append("dimmingSetting", 5);
+    frontInitial->append("range", "0,255");
+
+    cbor* backInitial = new cbor(CBOR_TYPE_MAP);
+    backInitial->append("rt", "oic.r.light.dimming");
+    backInitial->append("dimmingSetting", 5);
+    backInitial->append("range", "0,255");
+
+
+    cbor* tableInitial = new cbor(CBOR_TYPE_MAP);
+    tableInitial->append("rt", "oic.r.light.dimming");
+    tableInitial->append("dimmingSetting", 5);
+    tableInitial->append("range", "0,255");
+
+
+    OICResource* front = new OICResource("/lampa/front", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        frontInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting")); //update dimming settings
+        int val = data.getMapValue("dimmingSetting").toInt();
+
+        setOutput(1, val);
+    }, frontInitial);
+
+    OICResource* back = new OICResource("/lampa/back", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        backInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+        int val = data.getMapValue("dimmingSetting").toInt();
+
+        setOutput(6, val);
+    }, backInitial);
+
+    OICResource* table = new OICResource("/lampa/table", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        tableInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+        int val = data.getMapValue("dimmingSetting").toInt();
+
+        setOutput(2, val);
+    }, tableInitial);
+
+    OICResource* ambient = new OICResource("/lampa/ambient", "oic.r.colour.rgb","oic.if.rw", [=](cbor data){
+        ambientInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+
+        List<String> vals = data.getMapValue("dimmingSetting").toString().split(",");
+        if (vals.size() == 3){
+            int red = atoi(vals.at(0).c_str());
+            int green = atoi(vals.at(1).c_str());
+            int blue = atoi(vals.at(2).c_str());
+
+            setOutput(5, red);
+            setOutput(4, green );
+            setOutput(3, blue);
+        }
+
+    }, ambientInitial);
+
+    server->addResource(front);
+    server->addResource(back);
+    server->addResource(table);
+    server->addResource(ambient);
+
+#endif
+#ifdef CONFIG_KUCHNIA
     server = new OICServer("Orange PI Kuchnia", "0000B960-0000-46F7-BEC0-9E6CBD61ADC2", [&](COAPPacket* packet){
         this->send_packet(packet);
     });
@@ -53,6 +128,8 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     server->addResource(floor);
     server->addResource(table);
     server->addResource(kuchnia);
+
+#endif
 
     server->start();
 
