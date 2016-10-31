@@ -1,11 +1,11 @@
 #include "application.h"
 #include "OICServer.h"
+#include "COAPServer.h"
 #include "QDebug"
 #include "QVariant"
 #include <poll.h>
 
 
-extern uint64_t get_current_ms();
 
 #define CONFIG_KUCHNIA_
 #define CONFIG_SALON
