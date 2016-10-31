@@ -40,6 +40,11 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     tableInitial->append("range", "0,255");
 
 
+    cbor* ambientPowerInitial = new cbor(CBOR_TYPE_MAP);
+    ambientPowerInitial->append("rt", "oic.r.light.dimming");
+    ambientPowerInitial->append("dimmingSetting", (long long)100);
+    ambientPowerInitial->append("range", "0,100");
+
     OICResource* front = new OICResource("/lampa/front", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
         frontInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting")); //update dimming settings
         int val = data.getMapValue("dimmingSetting").toInt();
@@ -61,25 +66,48 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
         setOutput(2, val);
     }, tableInitial);
 
-    OICResource* ambient = new OICResource("/lampa/ambient", "oic.r.colour.rgb","oic.if.rw", [=](cbor data){
-        ambientInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+    OICResource* ambientPower = new OICResource("/lampa/ambientPower", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        ambientPowerInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
 
-        List<String> vals = data.getMapValue("dimmingSetting").toString().split(",");
+        int ambientPowerValue = data.getMapValue("dimmingSetting").toInt();
+
+        List<String> vals = ambientInitial->getMapValue("dimmingSetting").toString().split(",");
         if (vals.size() == 3){
-            int red = atoi(vals.at(0).c_str());
-            int green = atoi(vals.at(1).c_str());
-            int blue = atoi(vals.at(2).c_str());
+            int red = atoi(vals.at(0).c_str()) * ((float)ambientPowerValue/100);
+            int green = atoi(vals.at(1).c_str()) * ((float)ambientPowerValue/100);
+            int blue = atoi(vals.at(2).c_str()) * ((float)ambientPowerValue/100);
 
+            qDebug() << red << green << blue;
             setOutput(5, red);
             setOutput(4, green );
             setOutput(3, blue);
         }
+
+    }, ambientPowerInitial);
+    OICResource* ambient = new OICResource("/lampa/ambient", "oic.r.colour.rgb","oic.if.rw", [=](cbor data){
+        ambientInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+
+        int ambientPowerValue = ambientPowerInitial->getMapValue("dimmingSetting").toInt();
+
+        List<String> vals = data.getMapValue("dimmingSetting").toString().split(",");
+        if (vals.size() == 3){
+            int red = atoi(vals.at(0).c_str()) * ((float)ambientPowerValue/100);
+            int green = atoi(vals.at(1).c_str()) * ((float)ambientPowerValue/100);
+            int blue = atoi(vals.at(2).c_str()) * ((float)ambientPowerValue/100);
+
+            qDebug() << red << green << blue;
+            setOutput(5, red);
+            setOutput(4, green );
+            setOutput(3, blue);
+        }
+
 
     }, ambientInitial);
 
     server->addResource(front);
     server->addResource(back);
     server->addResource(table);
+    server->addResource(ambientPower);
     server->addResource(ambient);
 
 #endif
