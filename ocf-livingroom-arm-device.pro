@@ -11,7 +11,7 @@ INCLUDEPATH += ../libcoap
 
 CONFIG += c++11
 
-TARGET = oic-console-sample-app
+TARGET = ocf-livingroom-arm-device
 CONFIG += console
 CONFIG -= app_bundle
 
