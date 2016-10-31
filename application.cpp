@@ -5,7 +5,7 @@
 #include "QVariant"
 #include <poll.h>
 
-
+#define SERIALPORT "ttyS3"
 
 #define CONFIG_KUCHNIA_
 #define CONFIG_SALON
@@ -166,28 +166,7 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     pthread_create(&m_discoveryThread, NULL, &Application::runDiscovery, this);
 
 
-    QString port;
-
-    if (port.isEmpty())
-    {
-        QList<QSerialPortInfo> infos = QSerialPortInfo::availablePorts();
-        QSerialPortInfo port;
-        foreach (QSerialPortInfo info, infos)
-        {
-            qDebug() << info.portName();
-            if (info.portName().contains("USB"))
-            {
-                port = info;
-                break;
-            }
-        }
-
-        m_serial = new QSerialPort(port, this);
-    }
-    else
-    {
-        m_serial = new QSerialPort(port, this);
-    }
+    QString port = SERIALPORT;
 
     bool res = m_serial->open(QIODevice::ReadWrite);
     qDebug() << "Serial port opened" << res;
