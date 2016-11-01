@@ -166,7 +166,7 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     pthread_create(&m_discoveryThread, NULL, &Application::runDiscovery, this);
 
 
-    QString port = SERIALPORT;
+    m_serial = new QSerialPort(SERIALPORT, this);
 
     bool res = m_serial->open(QIODevice::ReadWrite);
     qDebug() << "Serial port opened" << res;
