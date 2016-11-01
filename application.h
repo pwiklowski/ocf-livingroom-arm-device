@@ -36,9 +36,15 @@ private:
     void send_packet(COAPPacket* packet);
 
     void setOutput(quint8 out, quint16 val);
+    void updateOutputs();
 
 
-
+    cbor* masterSwitchInitial;
+    cbor* ambientInitial;
+    cbor* frontInitial;
+    cbor* backInitial;
+    cbor* tableInitial;
+    cbor* ambientPowerInitial;
 
     int m_socketFd;
     QSerialPort* m_serial;
