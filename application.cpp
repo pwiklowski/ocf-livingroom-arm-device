@@ -8,13 +8,14 @@
 #define SERIALPORT "ttyS3"
 
 #define CONFIG_KUCHNIA_
-#define CONFIG_SALON
+#define CONFIG_SALON_
+#define CONFIG_HALL
 
 
 Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 {
 #ifdef CONFIG_SALON
-    server = new OICServer("Orange PI Salon", "00000000-0000-0000-0001-000000000001", [&](COAPPacket* packet){
+    server = new OICServer("Sample app", "10000000-0000-0000-000F-000000000001", [&](COAPPacket* packet){
         this->send_packet(packet);
     });
 
@@ -137,6 +138,42 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     server->addResource(kuchnia);
 
 #endif
+#ifdef CONFIG_HALL
+    server = new OICServer("Orange PI Przedpokoj", "00000000-0000-0000-0001-000000000002", [&](COAPPacket* packet){
+        this->send_packet(packet);
+    });
+
+    cbor* mainInitial = new cbor(CBOR_TYPE_MAP);
+    mainInitial->append("rt", "oic.r.light.dimming");
+    mainInitial->append("dimmingSetting", 5);
+    mainInitial->append("range", "0,255");
+
+    cbor* ambientInitial = new cbor(CBOR_TYPE_MAP);
+    ambientInitial->append("rt", "oic.r.light.dimming");
+    ambientInitial->append("dimmingSetting", 5);
+    ambientInitial->append("range", "0,255");
+
+
+    OICResource* main = new OICResource("/main", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        mainInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+        int val = data.getMapValue("dimmingSetting").toInt();
+        qDebug() << "Front updated" << val;
+        setOutput(1, val);
+    }, mainInitial);
+
+
+    OICResource* ambient = new OICResource("/ambient", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+        ambientInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
+        int val = data.getMapValue("dimmingSetting").toInt();
+        qDebug() << "Table updated" << val;
+        setOutput(2, val);
+    }, ambientInitial);
+
+
+    server->addResource(main);
+    server->addResource(ambient);
+
+#endif
 
     server->start();
 
@@ -149,7 +186,7 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 
     bool res = m_serial->open(QIODevice::ReadWrite);
     qDebug() << "Serial port opened" << res;
-    m_serial->setBaudRate(QSerialPort::Baud115200);
+    m_serial->setBaudRate(QSerialPort::Baud9600);
     m_serial->setDataBits(QSerialPort::Data8);
     m_serial->setParity(QSerialPort::NoParity);
     m_serial->setStopBits(QSerialPort::OneStop);
