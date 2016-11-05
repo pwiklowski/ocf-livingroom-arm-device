@@ -11,7 +11,7 @@
 
 #define LOG_FILE "/usr/local/wiklosoft/log"
 #define RUNNING_DIR "/tmp/wiklosoft/"
-#define LOCK_FILE "/tmp/lock"
+#define LOCK_FILE "/tmp/wiklosoft/ocf_device_lock"
 
 void signal_handler(int sig)
 {
