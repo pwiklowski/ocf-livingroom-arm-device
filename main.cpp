@@ -55,6 +55,7 @@ void init_daemon()
 
     umask(027); /* set newly created file permissions */
 
+    mkdir(RUNNING_DIR, 0777);
     chdir(RUNNING_DIR); /* change running directory */
     lfp=open(LOCK_FILE,O_RDWR|O_CREAT,0640);
     if (lfp<0)
