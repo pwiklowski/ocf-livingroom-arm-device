@@ -1,0 +1,2 @@
+check process ocf_device with pidfile /tmp/wiklosoft/ocf_device_lock
+    start program = "FILLME_PLEASE/run.sh"
