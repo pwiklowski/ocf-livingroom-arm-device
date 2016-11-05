@@ -186,7 +186,7 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 
     bool res = m_serial->open(QIODevice::ReadWrite);
     qDebug() << "Serial port opened" << res;
-    m_serial->setBaudRate(QSerialPort::Baud9600);
+    m_serial->setBaudRate(QSerialPort::Baud115200);
     m_serial->setDataBits(QSerialPort::Data8);
     m_serial->setParity(QSerialPort::NoParity);
     m_serial->setStopBits(QSerialPort::OneStop);
