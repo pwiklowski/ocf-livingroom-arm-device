@@ -15,7 +15,7 @@
 Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
 {
 #ifdef CONFIG_SALON
-    server = new OICServer("Sample app", "10000000-0000-0000-000F-000000000001", [&](COAPPacket* packet){
+    server = new OICServer("OrangePi Salon", "00000000-0000-0000-0001-000000000001", [&](COAPPacket* packet)
         this->send_packet(packet);
     });
 
