@@ -397,7 +397,7 @@ void Application::notifyObservers(QString name, QVariant v){
             value.append("dimmingSetting", v.toInt());
         }
 
-        List<uint8_t> data;
+        Vector<uint8_t> data;
         value.dump(&data);
         server->notify(name.toLatin1().data(), &data);
     }
