@@ -47,37 +47,37 @@ Application::Application(int &argc, char *argv[]) : QCoreApplication(argc, argv)
     ambientPowerInitial->append("dimmingSetting", (long long)100);
     ambientPowerInitial->append("range", "0,100");
 
-    OICResource* master = new OICResource("Living Room Master Switch", "/master", "oic.r.switch.binary","oic.if.rw", [=](cbor data){
+    OICResource* master = new OICResource("Master Switch in Living Room", "/master", "oic.r.switch.binary","oic.if.rw", [=](cbor data){
         masterSwitchInitial->toMap()->insert("value", data.getMapValue("value"));
         qDebug() << "master" << data.getMapValue("value").toBool();
         updateOutputs();
     }, masterSwitchInitial);
 
-    OICResource* front = new OICResource("Living Room front light", "/lampa/front", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+    OICResource* front = new OICResource("Front light in Living Room ", "/lampa/front", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
         frontInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting")); //update dimming settings
         qDebug() << "front" << data.getMapValue("dimmingSetting").toInt();
         updateOutputs();
     }, frontInitial);
 
-    OICResource* back = new OICResource("Living Room back light", "/lampa/back", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+    OICResource* back = new OICResource("Back light in Living Room", "/lampa/back", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
         backInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         qDebug() << "back" << data.getMapValue("dimmingSetting").toInt();
         updateOutputs();
     }, backInitial);
 
-    OICResource* table = new OICResource("Living Room table light", "/lampa/table", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+    OICResource* table = new OICResource("Table light in Living room", "/lampa/table", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
         tableInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         qDebug() << "table" << data.getMapValue("dimmingSetting").toInt();
         updateOutputs();
     }, tableInitial);
 
-    OICResource* ambientPower = new OICResource("Living Room ambient light", "/lampa/ambientPower", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
+    OICResource* ambientPower = new OICResource("Ambient light power in Living Room", "/lampa/ambientPower", "oic.r.light.dimming","oic.if.rw", [=](cbor data){
         ambientPowerInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         qDebug() << "ambientPower" << data.getMapValue("dimmingSetting").toInt();
         updateOutputs();
     }, ambientPowerInitial);
 
-    OICResource* ambient = new OICResource("Living Room ambient light", "/lampa/ambient", "oic.r.colour.rgb","oic.if.rw", [=](cbor data){
+    OICResource* ambient = new OICResource("Ambient light in Living Room", "/lampa/ambient", "oic.r.colour.rgb","oic.if.rw", [=](cbor data){
         ambientInitial->toMap()->insert("dimmingSetting", data.getMapValue("dimmingSetting"));
         qDebug() << "ambient" << ambientPowerInitial->getMapValue("dimmingSetting").toInt();
         updateOutputs();
